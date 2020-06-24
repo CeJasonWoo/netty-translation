@@ -248,9 +248,10 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
             return null;
         }
 
-        // Convert file separators.
+        // Convert file separators. 替换成系统的分隔符
         uri = uri.replace('/', File.separatorChar);
 
+        // 对新的URI做二次合法校验
         // Simplistic dumb security check.
         // You will have to do something serious in the production environment.
         if (uri.contains(File.separator + '.') ||
@@ -260,7 +261,7 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
             return null;
         }
 
-        // Convert to absolute path.
+        // Convert to absolute path. 拼接当前工程目录
         return SystemPropertyUtil.get("user.dir") + File.separator + uri;
     }
 

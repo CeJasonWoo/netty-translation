@@ -56,7 +56,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     volatile EventLoopGroup group;
     @SuppressWarnings("deprecation")
-    private volatile ChannelFactory<? extends C> channelFactory;
+    private volatile ChannelFactory<? extends C> channelFactory; // 聚合??
     private volatile SocketAddress localAddress;
     private final Map<ChannelOption<?>, Object> options = new LinkedHashMap<ChannelOption<?>, Object>();
     private final Map<AttributeKey<?>, Object> attrs = new LinkedHashMap<AttributeKey<?>, Object>();
@@ -99,6 +99,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     /**
      * 通过泛型的方式转换为具体的子类型。
      * 这是个很好的方式，我有用过，在Builder模式上用着很爽。
+     * // Jason 值得参考
      * @return
      */
     @SuppressWarnings("unchecked")
@@ -305,7 +306,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         if (localAddress == null) {
             throw new NullPointerException("localAddress");
         }
-        // 执行真正的绑定犯法
+        // 执行真正的绑定方法
         return doBind(localAddress);
     }
 
@@ -315,6 +316,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * @return
      */
     private ChannelFuture doBind(final SocketAddress localAddress) {
+// Jason 这里很重要 不要忽略了 create and init Channel =================================
         final ChannelFuture regFuture = initAndRegister();
         final Channel channel = regFuture.channel();
         // 注册到EventLoop失败
@@ -325,6 +327,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             // 注册完成，但不一定成功了，尝试进行绑定
             // At this point we know that the registration was complete and successful.
             ChannelPromise promise = channel.newPromise();
+// ====================================================================================
             doBind0(regFuture, channel, localAddress, promise);
             return promise;
         } else {
@@ -364,6 +367,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         Channel channel = null;
         try {
             // 利用channel工厂创建channel(默认的是反射channel)
+// ============================================================================
             channel = channelFactory.newChannel();
             // 初始化channel的属性
             init(channel);
@@ -381,6 +385,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         }
 
         // 这里尝试将该Bootstrap管理的channel注册到它的group上，这是一个异步方法
+// group 就是 bossEventLoopGroup
+// register 方法是调用 MultithreadEventLoopGroup#register, 通过选择器选出 EventLoop, 再调用到 SingleThreadEventLoop#register
+// Page 269 ===================================================================
         ChannelFuture regFuture = config().group().register(channel);
 
         // 这里并没有进行任何的等待，先检查了一次是否已经失败
@@ -421,6 +428,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      */
     abstract void init(Channel channel) throws Exception;
 
+    // TODO: 2020/6/5 JasonWoo static 方法 怎么会线程安全 ???
     /**
      * 这里需要注意的是，因为不一定是当前线程执行；
      * 可能是回调线程执行，因此又线程安全的考虑；
@@ -445,11 +453,13 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         // 同一个线程上。(EventLoop是顺序执行提交的任务的，是单线程的)
 
         // 提交任务到目标EventLoop 以保证线程安全
+// Jason 这里就会调用 eventLoop 的 run 方法!!
         channel.eventLoop().execute(new Runnable() {
             @Override
             public void run() {
                 if (regFuture.isSuccess()) {
                     // 注册成功
+// 从 tailContext 到 HeadContext#bind
                     channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
                 } else {
                     // 注册失败

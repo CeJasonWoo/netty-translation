@@ -86,10 +86,11 @@ public final class ChannelOutboundBuffer {
     private long nioBufferSize;
 
     private boolean inFail;
-
+// Jason AtomicLongFieldUpdater 主要用于实现volatile字段的原子更新, 比直接使用AtomicLong更加灵活
+// TODO: 2020/6/11 JasonWoo 这里为什么不用放到while循环里更新了 AtomicLongFieldUpdater, 以前版本的代码明明要的?
     private static final AtomicLongFieldUpdater<ChannelOutboundBuffer> TOTAL_PENDING_SIZE_UPDATER =
             AtomicLongFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "totalPendingSize");
-
+// Jason 由多个线程读取这个字段 所以要volatile关键字
     @SuppressWarnings("UnusedDeclaration")
     private volatile long totalPendingSize;
 

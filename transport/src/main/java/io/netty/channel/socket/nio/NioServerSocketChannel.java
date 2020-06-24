@@ -99,6 +99,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
     public NioServerSocketChannel(ServerSocketChannel channel) {
         // channel是JDK的ServerSocketChannel
         // ServerSocketChannel只关注连接事件。 (只在selector中注册ACCEPT事件)
+// ===================================================================
         super(null, channel, SelectionKey.OP_ACCEPT);
         // 创建对应的配置对象
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
@@ -155,10 +156,13 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     @Override
     protected int doReadMessages(List<Object> buf) throws Exception {
+// Jason read 连接客户端 关键代码
+// Page 274
         SocketChannel ch = SocketUtils.accept(javaChannel());
 
         try {
             if (ch != null) {
+// 这里肯定要注册读事件 从客户端socketChannel读取信息
                 buf.add(new NioSocketChannel(this, ch));
                 return 1;
             }

@@ -980,9 +980,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
 
         boolean inEventLoop = inEventLoop();
+// Jason queue.offer 一个任务
         addTask(task);
         if (!inEventLoop) {
             // 如果不在当前线程，那么添加任务之后，必须保证线程已启动
+// ==================================================================
             startThread();
             if (isShutdown()) {
                 // 压入队列是一个过程！在压入队列的过程中，executor的状态可能改变，因此必须再次校验 - 以判断线程是否在任务压入队列之后已经开始关闭了
@@ -1159,6 +1161,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                 boolean success = false;
                 updateLastExecutionTime();
                 try {
+// ===================================================================
                     SingleThreadEventExecutor.this.run();
                     success = true;
                 } catch (Throwable t) {

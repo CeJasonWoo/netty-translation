@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -41,6 +42,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
 
     /**
      * 包含的子节点们，用数组，方便分配下一个EventExecutor(通过计算索引来分配)
+     * // Jason 这里其实就是 EventLoop数组
      */
     private final EventExecutor[] children;
     /**
@@ -107,6 +109,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
         // 线程数由执行IO的线程数决定，也就是EventLoop的个数(nThreads)。每一个EventLoop可看做一个死循环的Runnable
 
         if (executor == null) {
+// Jason executor = Executors.newFixedThreadPool(1); 相对于传统线程池, ThreadPerTaskExecutor 内部没有队列
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
 
@@ -116,6 +119,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             // 当前索引的child是否创建成功
             boolean success = false;
             try {
+// Jason 新建 EventLoop
                 children[i] = newChild(executor, args);
                 success = true;
             } catch (Exception e) {
@@ -146,6 +150,7 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
 
         // 到这里所有的线程创建成功。
         // 创建EventExecutor选择器
+        // Jason 线程选择器
         chooser = chooserFactory.newChooser(children);
 
         // 监听子节点关闭的Listener，可以看做回调式的CountDownLatch.

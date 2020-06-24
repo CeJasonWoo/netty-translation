@@ -38,6 +38,7 @@ import java.nio.channels.SelectionKey;
 import static io.netty.channel.internal.ChannelUtils.WRITE_STATUS_SNDBUF_FULL;
 
 /**
+ * 客户端Channel
  * {@link AbstractNioChannel} base class for {@link Channel}s that operate on bytes.
  */
 public abstract class AbstractNioByteChannel extends AbstractNioChannel {
@@ -63,6 +64,8 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
      * @param ch                the underlying {@link SelectableChannel} on which it operates
      */
     protected AbstractNioByteChannel(Channel parent, SelectableChannel ch) {
+        // Jason 创建 客户端 channel 时默认是read
+// ===================================================================
         super(parent, ch, SelectionKey.OP_READ);
     }
 
@@ -145,6 +148,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             try {
                 do {
                     byteBuf = allocHandle.allocate(allocator);
+// read 客户端读的是数据
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
@@ -210,22 +214,23 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     }
 
     private int doWriteInternal(ChannelOutboundBuffer in, Object msg) throws Exception {
-        if (msg instanceof ByteBuf) {
+        if (msg instanceof ByteBuf) { // 分支1
             ByteBuf buf = (ByteBuf) msg;
-            if (!buf.isReadable()) {
+            if (!buf.isReadable()) { // 可读字节数为0
                 in.remove();
                 return 0;
             }
 
-            final int localFlushedAmount = doWriteBytes(buf);
+            final int localFlushedAmount = doWriteBytes(buf); // 消息发送
+            // TODO: 2020/6/3 JasonWoo 如果 localFlushedAmount == 0 TCP缓冲区已满
             if (localFlushedAmount > 0) {
-                in.progress(localFlushedAmount);
-                if (!buf.isReadable()) {
+                in.progress(localFlushedAmount); // TODO: 2020/6/3 JasonWoo 更新消息发送进度
+                if (!buf.isReadable()) { // 可读字节数为0 说明已经全部发完 从队列中删除
                     in.remove();
                 }
                 return 1;
             }
-        } else if (msg instanceof FileRegion) {
+        } else if (msg instanceof FileRegion) { // 分支2 文件发送
             FileRegion region = (FileRegion) msg;
             if (region.transferred() >= region.count()) {
                 in.remove();
@@ -249,18 +254,23 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
     @Override
     protected void doWrite(ChannelOutboundBuffer in) throws Exception {
+        // 获取循环发送次数
+        // 当一次发送没有完成时 (写半包), 继续发送的次数
+        // 如果不设置最大发送次数 I/O线程会一直尝试写操作
         int writeSpinCount = config().getWriteSpinCount();
         do {
-            Object msg = in.current();
-            if (msg == null) {
+            // TODO: 2020/6/3 JasonWoo ChannelOutboundBuffer 是环形数组??
+            Object msg = in.current();   // 发送消息的缓存队列中 弹出 1条消息
+            if (msg == null) { // 全部消息发送完成
                 // Wrote all messages.
-                clearOpWrite();
+                clearOpWrite(); // 清除半包标识
                 // Directly return here so incompleteWrite(...) is not called.
                 return;
             }
             writeSpinCount -= doWriteInternal(in, msg);
         } while (writeSpinCount > 0);
 
+        // TODO: 2020/6/3 JasonWoo 没有发送完成的消息, 继续发送 ??
         incompleteWrite(writeSpinCount < 0);
     }
 
@@ -288,7 +298,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
         // Did not write completely.
         if (setOpWrite) {
             setOpWrite();
-        } else {
+        } else { // Jason 没有写操作位 需要启动独立线程
             // It is possible that we have set the write OP, woken up by NIO because the socket is writable, and then
             // use our write quantum. In this case we no longer want to set the write OP because the socket is still
             // writable (as far as we know). We will find out next time we attempt to write if the socket is writable
@@ -343,8 +353,8 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             return;
         }
         final int interestOps = key.interestOps();
-        if ((interestOps & SelectionKey.OP_WRITE) != 0) {
-            key.interestOps(interestOps & ~SelectionKey.OP_WRITE);
+        if ((interestOps & SelectionKey.OP_WRITE) != 0) {// 不为0 说明是可写的
+            key.interestOps(interestOps & ~SelectionKey.OP_WRITE); // 清除写操作位
         }
     }
 }

@@ -27,6 +27,10 @@ import java.util.List;
 
 
 /**
+ *
+ * 在消息头新增报文长度字段
+ * 处理粘包/半包问题
+ *
  * An encoder that prepends the length of the message.  The length value is
  * prepended as a binary form.
  * <p>

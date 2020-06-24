@@ -50,6 +50,7 @@ public class DefaultThreadFactory implements ThreadFactory {
     private final boolean daemon;
     /**
      * 线程优先级
+     * // Jason Page 478 JDK自带的线程优先级是无法跨平台的, 也即是这个priority是个鸡肋,慎用
      */
     private final int priority;
     /**

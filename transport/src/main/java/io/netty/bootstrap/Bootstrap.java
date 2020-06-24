@@ -159,6 +159,8 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
     /**
      * @see #connect()
      */
+// Q: 2020/6/10 JasonWoo 客户端发起连接超时在哪实现?
+// A: AbstractNioChannel#connect
     private ChannelFuture doResolveAndConnect(final SocketAddress remoteAddress, final SocketAddress localAddress) {
         final ChannelFuture regFuture = initAndRegister();
         final Channel channel = regFuture.channel();
@@ -201,6 +203,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
 
             if (!resolver.isSupported(remoteAddress) || resolver.isResolved(remoteAddress)) {
                 // Resolver has no idea about what to do with the specified remote address or it's resolved already.
+// =======================================
                 doConnect(remoteAddress, localAddress, promise);
                 return promise;
             }
@@ -245,6 +248,7 @@ public class Bootstrap extends AbstractBootstrap<Bootstrap, Channel> {
         // This method is invoked before channelRegistered() is triggered.  Give user handlers a chance to set up
         // the pipeline in its channelRegistered() implementation.
         final Channel channel = connectPromise.channel();
+// 客服端 connect 触发
         channel.eventLoop().execute(new Runnable() {
             @Override
             public void run() {

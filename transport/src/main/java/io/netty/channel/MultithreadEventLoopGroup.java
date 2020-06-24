@@ -98,6 +98,7 @@ public abstract class MultithreadEventLoopGroup extends MultithreadEventExecutor
      */
     @Override
     public ChannelFuture register(Channel channel) {
+// next() 这里调用了线程选择器 根据数字是否二的次幂算法也不同
         return next().register(channel);
     }
 

@@ -50,6 +50,10 @@ import static io.netty.util.internal.ObjectUtil.checkNotNull;
  *     <li>在合并消息时也会很有用。</li>
  * </p>
  *
+ * // Jason 对ByteBuf的装饰器
+ * // 添加 ByteBuf 是零拷贝的
+ *
+ *
  * A virtual buffer which shows multiple buffers as a single merged buffer.  It is recommended to use
  * {@link ByteBufAllocator#compositeBuffer()} or {@link Unpooled#wrappedBuffer(ByteBuf...)} instead of calling the
  * constructor explicitly.

@@ -57,15 +57,21 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     /**
      * Netty的NioChannel实际上是代理JDK的Channel。
      * Netty中有许多代理模式的运用。(或者说装饰吧)
+     *  // Jason NioSocketChannel NioServerSocketChannel 共用
      */
     private final SelectableChannel ch;
     /**
      * 读感兴趣的操作集合
+     * // Jason JDK SelectionKey OP_READ
      */
     protected final int readInterestOp;
     /**
      * 注册成功的key，每一次注册都会生成新的SelectionKey
      * 这里使用volatile的原因待分析
+     *
+     * // Jason Channel 注册 EventLoop 成功后返回
+     * // Q: 2020/6/3 JasonWoo volatile分析
+     * // A: 只要存在多线程读 单线程写 的场景, 就可以使用volatile
      */
     volatile SelectionKey selectionKey;
 
@@ -81,9 +87,9 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      * The future of the current connection attempt.  If not null, subsequent
      * connection attempts will fail.
      */
-    private ChannelPromise connectPromise;
-    private ScheduledFuture<?> connectTimeoutFuture;
-    private SocketAddress requestedRemoteAddress;
+    private ChannelPromise connectPromise; // 连接操作结果
+    private ScheduledFuture<?> connectTimeoutFuture; // 连接超时定时器
+    private SocketAddress requestedRemoteAddress; // 请求的通信地址
 
     /**
      * Create a new instance
@@ -100,6 +106,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         this.ch = ch;
         this.readInterestOp = readInterestOp;
         try {
+// Jason 非阻塞
             ch.configureBlocking(false);
         } catch (IOException e) {
             try {
@@ -276,7 +283,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                 } else {
                     connectPromise = promise;
                     requestedRemoteAddress = remoteAddress;
-
+// Jason Page 502 客户端连接超时时间 监听
                     // Schedule connect timeout.
                     int connectTimeoutMillis = config().getConnectTimeoutMillis();
                     if (connectTimeoutMillis > 0) {
@@ -287,6 +294,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
                                 ConnectTimeoutException cause =
                                         new ConnectTimeoutException("connection timed out: " + remoteAddress);
                                 if (connectPromise != null && connectPromise.tryFailure(cause)) {
+                                    // 超时还是没有返回应答 关闭连接
                                     close(voidPromise());
                                 }
                             }
@@ -328,6 +336,8 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             // Regardless if the connection attempt was cancelled, channelActive() event should be triggered,
             // because what happened is what happened.
             if (!wasActive && active) {
+                // 触发回调
+// ===========================================
                 pipeline().fireChannelActive();
             }
 
@@ -364,6 +374,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
             } finally {
                 // Check for null as the connectTimeoutFuture is only created if a connectTimeoutMillis > 0 is used
                 // See https://github.com/netty/netty/issues/1770
+// Jason 在超时之前完成连接操作, 取消连接超时定时任务
                 if (connectTimeoutFuture != null) {
                     connectTimeoutFuture.cancel(false);
                 }
@@ -398,21 +409,26 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         return loop instanceof NioEventLoop;
     }
 
+    // Jason channel 注册到 EventLoop 的多路复用器上
     @Override
     protected void doRegister() throws Exception {
-        boolean selected = false;
+        boolean selected = false; // 注册异常处理标识 ???
         for (;;) {
             try {
                 // 死循环的方式注册channel到selector
+// Jason ops = 0 对任何事件都不感兴趣
+// 附件 用自身作为附件?? 附件的作用就是用作下一步的入参
+// 注册成功返回 selectionKey , 用于从多路复用器上获取 Channel 对象
+// ==========================================================================================
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
-            } catch (CancelledKeyException e) {
-                if (!selected) {
+            } catch (CancelledKeyException e) { // selectionKey 已经失效
+                if (!selected) { // 首次处理该异常
                     // Force the Selector to select now as the "canceled" SelectionKey may still be
                     // cached and not removed because no Select.select(..) operation was called yet.
-                    eventLoop().selectNow();
-                    selected = true;
-                } else {
+                    eventLoop().selectNow(); // Jason TODO 将 selectionKey 从复用器删除  然后发起下一次注册
+                    selected = true; // 表明失效的 selectionKey 已经删除
+                } else { // 再次发生该异常 说明已经无法删除失效的 selectionKey ; 正常来说不会发生这种问题;
                     // We forced a select operation on the selector before but the SelectionKey is still cached
                     // for whatever reason. JDK bug ?
                     throw e;
@@ -426,6 +442,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         eventLoop().cancel(selectionKey());
     }
 
+// Jason readInterestOp 是在哪里传进来的??? 参看 NioServerSocketChannel 的无参构造函数
     @Override
     protected void doBeginRead() throws Exception {
         // Channel.read() or ChannelHandlerContext.read() was called
@@ -437,6 +454,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         readPending = true;
 
         final int interestOps = selectionKey.interestOps();
+// Jason interestOps & readInterestOp == 0 说明当前没设置读操作
         if ((interestOps & readInterestOp) == 0) {
             selectionKey.interestOps(interestOps | readInterestOp);
         }

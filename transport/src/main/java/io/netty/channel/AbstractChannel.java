@@ -275,11 +275,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
     @Override
     public ChannelFuture bind(SocketAddress localAddress, ChannelPromise promise) {
+// 从 tailContext 到 HeadContext#bind
         return pipeline.bind(localAddress, promise);
     }
 
     @Override
     public ChannelFuture connect(SocketAddress remoteAddress, ChannelPromise promise) {
+//        出站: tail--> xxx ---> head 最终调用到 HeadContext#connect ->  unsafe.connect (AbstractNioChannel)
         return pipeline.connect(remoteAddress, promise);
     }
 
@@ -481,6 +483,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             return remoteAddress0();
         }
 
+// Jason 将当前 unsafe 对应的 channel 注册到 EventLoop 的多路复用器
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             if (eventLoop == null) {
@@ -498,15 +501,19 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
             // 将EventLoop对象引用赋值给Channel。
+// =============================================
             AbstractChannel.this.eventLoop = eventLoop;
-
+            // Jason 是否同一个线程
             if (eventLoop.inEventLoop()) {
                 // 注册的线程就是EventLoop线程，可直接注册
+// Jason 单线程不用考虑多线程并发问题
                 register0(promise);
             } else {
                 // 提交注册请求的不是EventLoop线程，提交到对应的EventLoop上。(保证线程安全)
                 // 提交操作是线程安全的，遵守happens-before原则
                 try {
+// Jason 服务端启动后第一次是进入这里
+// =============================================
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
@@ -528,6 +535,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
          * 当前线程就是EventLoop线程
          * @param promise
          */
+        // Page 270
         private void register0(ChannelPromise promise) {
             try {
                 // check if the channel is still open as it could be closed in the mean time when the register
@@ -536,26 +544,33 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
+// Jason 注意这里的 doRegister 是  AbstractChannel 类的方法, 不是Unsafe的方法
+// 子类实现 AbstractNioChannel 重点!!!
                 doRegister();
                 neverRegistered = false;
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
+                // 触发回调
                 pipeline.invokeHandlerAddedIfNeeded();
 
                 safeSetSuccess(promise);
+                // 触发回调
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
                 if (isActive()) {
                     if (firstRegistration) {
+// Jason 激活 触发回调 首次注册
                         pipeline.fireChannelActive();
                     } else if (config().isAutoRead()) {
                         // This channel was registered before and autoRead() is set. This means we need to begin read
                         // again so that we process inbound data.
                         //
                         // See https://github.com/netty/netty/issues/4805
+                        // TODO: 2020/6/9 JasonWoo 这里为何要自动读??
+                        // 这里不是注册读事件 而是将读事件标记进入感兴趣事件??? EventLoop#run会自动轮询???
                         beginRead();
                     }
                 }
@@ -590,6 +605,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
             boolean wasActive = isActive();
             try {
+// javaChannel().socket().bind()
+// ========================================
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -601,6 +618,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
+// HeadContext ??
+// ======================================== ACCEPT 事件
                         pipeline.fireChannelActive();
                     }
                 });

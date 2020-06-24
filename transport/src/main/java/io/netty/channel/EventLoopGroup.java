@@ -18,6 +18,8 @@ package io.netty.channel;
 import io.netty.util.concurrent.EventExecutorGroup;
 
 /**
+ * // Jason EventLoopGroup就是一个线程池 里面存放了很多EventLoop
+ *
  * EventLoopGroup是允许在事件循环期间(during event loop) 注册channel 以便能够在接下来的
  * select操作得到处理的特殊EventExecutorGroup。
  *

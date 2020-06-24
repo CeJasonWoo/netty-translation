@@ -23,8 +23,11 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.CorruptedFrameException;
 
 import java.util.List;
-
+// TODO: 2020/6/2 JasonWoo  和 LengthFieldBasedFrameDecoder 有什么区别?
 /**
+ * // Jason 处理半包消息
+ *
+ *
  * A decoder that splits the received {@link ByteBuf}s dynamically by the
  * value of the Google Protocol Buffers
  * <a href="https://developers.google.com/protocol-buffers/docs/encoding#varints">Base

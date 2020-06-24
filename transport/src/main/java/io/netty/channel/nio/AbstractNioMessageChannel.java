@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 服务端Channel
+ *
  * {@link AbstractNioMessageChannel} 表示的是对消息进行操作的{@link AbstractNioChannel}。
  *
  * {@link AbstractNioChannel} base class for {@link Channel}s that operate on messages.
@@ -74,6 +76,8 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
             try {
                 try {
                     do {
+// Page 273
+// ============================================================================
                         int localRead = doReadMessages(readBuf);
                         if (localRead == 0) {
                             break;
@@ -92,10 +96,16 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 int size = readBuf.size();
                 for (int i = 0; i < size; i ++) {
                     readPending = false;
+// 连接客户端后 触发读事件 Page 274
+// ======================================================
+                    // head -> ServerBootstrapAcceptor -> tail ???
+                    // @see ServerBootstrapAcceptor#channelRead
                     pipeline.fireChannelRead(readBuf.get(i));
                 }
                 readBuf.clear();
                 allocHandle.readComplete();
+// 触发回调
+// TODO: 2020/6/10 JasonWoo Page 275 pipeline中事件的传播不清晰
                 pipeline.fireChannelReadComplete();
 
                 if (exception != null) {

@@ -92,7 +92,7 @@ public class ChannelOption<T> extends AbstractConstant<ChannelOption<T>> {
 
     public static final ChannelOption<RecvByteBufAllocator> RCVBUF_ALLOCATOR = valueOf("RCVBUF_ALLOCATOR");
     public static final ChannelOption<MessageSizeEstimator> MESSAGE_SIZE_ESTIMATOR = valueOf("MESSAGE_SIZE_ESTIMATOR");
-
+// Jason 客户端连接超时时间 原生的NIO是不支持的
     public static final ChannelOption<Integer> CONNECT_TIMEOUT_MILLIS = valueOf("CONNECT_TIMEOUT_MILLIS");
     /**
      * @deprecated Use {@link MaxMessagesRecvByteBufAllocator}

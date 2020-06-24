@@ -49,13 +49,15 @@ public final class EchoServer {
         }
 
         // Configure the server.
+// Jason 服务端有两个线程组 链接 读写
+// Jason 1线程池 2线程选择器 3复用器provider 4新建Child -> eventLoop 绑定 selector
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         final EchoServerHandler serverHandler = new EchoServerHandler();
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
-             .channel(NioServerSocketChannel.class)
+             .channel(NioServerSocketChannel.class) // Jason 封装了 Java sdk ServerSocketChannel
              .option(ChannelOption.SO_BACKLOG, 100)
              .handler(new LoggingHandler(LogLevel.INFO))
              .childHandler(new ChannelInitializer<SocketChannel>() {
@@ -71,9 +73,20 @@ public final class EchoServer {
              });
 
             // Start the server.
+// Jason 异步绑定 同步阻塞等待绑定完成
+//
+// 1.create and init ServerChannel ; register 无事件; channelActive触发read ACCEPT事件;
+// 1-2.doBind 底层是javaChannel().socket().bind(); channelActive触发read(底层是AbstractNioChannel#doBeginRead) SelectionKey->ACCEPT事件;
+//
+// 2.NioEventLoop#run -> 遍历keys -> ACCEPT事件 (见NioEventLoop#processSelectedKey AbstractNioMessageChannel#read);
+// 3.ServerChannel read -> accept (见NioServerSocketChannel#doReadMessages);
+// 4.bossGroup -> workGroup (见ServerBootstrapAcceptor#channelRead); register 无事件; channelActive触发read READ事件;
+//
+// 5.NioEventLoop#run -> 遍历keys -> READ事件 (见NioEventLoop#processSelectedKey AbstractNioByteChannel#read);
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.
+// Jason 服务端关闭后才能退出main函数
             f.channel().closeFuture().sync();
         } finally {
             // Shut down all event loops to terminate all threads.

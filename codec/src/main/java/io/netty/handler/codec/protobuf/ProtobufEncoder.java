@@ -38,8 +38,10 @@ import static io.netty.buffer.Unpooled.*;
  * {@link ChannelPipeline} pipeline = ...;
  *
  * // Decoders
+ * // Jason 半包处理
  * pipeline.addLast("frameDecoder",
  *                  new {@link LengthFieldBasedFrameDecoder}(1048576, 0, 4, 0, 4));
+ * // Jason 传入解码的类型
  * pipeline.addLast("protobufDecoder",
  *                  new {@link ProtobufDecoder}(MyMessage.getDefaultInstance()));
  *

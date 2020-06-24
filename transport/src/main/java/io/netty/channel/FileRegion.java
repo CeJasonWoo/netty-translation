@@ -22,6 +22,9 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 
 /**
+ *
+ * // Jason 支持 零拷贝
+ *
  * 通过channel发送的，支持零拷贝文件传输的 文件区域（内存文件映射）。
  * <h3>升级你的JDK</h3>
  * 在旧版本的Sun JDK和它的派生版本中至少有四个已知的错误；

@@ -205,7 +205,7 @@ public class DefaultChannelConfig implements ChannelConfig {
         }
         option.validate(value);
     }
-
+// Jason 客户端连接超时时间 配置获取
     @Override
     public int getConnectTimeoutMillis() {
         return connectTimeoutMillis;

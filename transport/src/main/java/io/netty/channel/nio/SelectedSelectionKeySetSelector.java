@@ -75,6 +75,7 @@ final class SelectedSelectionKeySetSelector extends Selector {
      * @return 本次select操作选中的准备就绪的操作数。
      * @throws IOException
      */
+// Jason 立刻返回 有(两次select之间的就绪个数) 没有(返回0)
     @Override
     public int selectNow() throws IOException {
         selectionKeys.reset();

@@ -152,6 +152,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         return this;
     }
 
+    // Page 268
     @Override
     void init(Channel channel) throws Exception {
         // 初始化parent的属性
@@ -161,7 +162,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         synchronized (options) {
             setChannelOptions(channel, options, logger);
         }
-        // 初始化channel的属性
+        // 初始化channel的属性  // Jason socket的参数
         final Map<AttributeKey<?>, Object> attrs = attrs0();
         synchronized (attrs) {
             for (Entry<AttributeKey<?>, Object> e: attrs.entrySet()) {
@@ -175,7 +176,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         ChannelPipeline p = channel.pipeline();
 
         // 初始化child的属性
-        final EventLoopGroup currentChildGroup = childGroup;
+        final EventLoopGroup currentChildGroup = childGroup; // NoiServerChannel ??
         final ChannelHandler currentChildHandler = childHandler;
         final Entry<ChannelOption<?>, Object>[] currentChildOptions;
         final Entry<AttributeKey<?>, Object>[] currentChildAttrs;
@@ -203,6 +204,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             @Override
             public void initChannel(final Channel ch) throws Exception {
                 final ChannelPipeline pipeline = ch.pipeline();
+// TODO: 2020/6/9 JasonWoo Bootstrap 的 handler 添加进来 ??
                 ChannelHandler handler = config.handler();
                 if (handler != null) {
                     pipeline.addLast(handler);
@@ -212,6 +214,8 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                 // 将Acceptor添加到Pipeline的末尾，这样当接收到新的连接时，pipeline末尾就会转移到ChildGroup
                 // 不太明白的是，为何不直接pipeline.addLast(acceptor)??? 这里不就是它的eventLoop线程吗？
 
+// Jason Server 专用 handler 添加进来, NoiServerChannel
+                // header -> ServerBootstrapAcceptor -> tail
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {
@@ -293,15 +297,17 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             // 接收到的连接(childChannel)
             final Channel child = (Channel) msg;
             // 将配置的child相关的属性初始化给新(接收)的channel
+// step1==================
             child.pipeline().addLast(childHandler);
 
+// step2==================
             setChannelOptions(child, childOptions, logger);
 
             for (Entry<AttributeKey<?>, Object> e: childAttrs) {
                 child.attr((AttributeKey<Object>) e.getKey()).set(e.getValue());
             }
-
             // 将新的channel注册到childGroup中(注册到某个线程上)。
+// step3==================
             try {
                 childGroup.register(child).addListener(new ChannelFutureListener() {
                     @Override

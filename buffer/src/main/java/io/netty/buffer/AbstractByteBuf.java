@@ -300,6 +300,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
         // 在这里调用子类的跳转容量方法
         // Adjust to the new capacity.
+// 自动扩容 ========================================================
         capacity(newCapacity);
     }
 

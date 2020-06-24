@@ -141,6 +141,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         voidPromise =  new VoidChannelPromise(channel, true);
 
         // 重要！ChannelPipeline的首尾节点
+// =================================================================
         tail = new TailContext(this);
         head = new HeadContext(this);
 
@@ -1509,7 +1510,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             ctx.fireChannelActive();
-
+// ==================================== channelActive 后自动触发 read 事件
             readIfIsAutoRead();
         }
 
